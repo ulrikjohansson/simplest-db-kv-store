@@ -1,9 +1,11 @@
 package io.ulrik.db
 
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 import java.io.RandomAccessFile
 import java.lang.IllegalStateException
 import java.nio.file.Path
-import kotlin.io.path.appendText
+import kotlin.io.path.*
 import kotlin.streams.toList
 
 /*fun main() {
@@ -11,25 +13,25 @@ import kotlin.streams.toList
 }*/
 
 interface DbStore {
-    fun get(key: Any): Any?
-    fun put(key: Any, value: Any): Unit
+    fun get(key: String): Any?
+    fun put(key: String, value: Any)
 }
 
 class ListStore : DbStore {
     private val store: MutableList<Pair<Any, Any>> = mutableListOf()
-    override fun get(key: Any): Any {
+    override fun get(key: String): Any {
         val values = store.stream().filter { it.first == key }.toList()
         return values.last().second
     }
 
-    override fun put(key: Any, value: Any) {
+    override fun put(key: String, value: Any) {
         store.add(Pair(key, value))
     }
 }
 
 class FileStore(private val path: Path) : DbStore {
 
-    override fun get(key: Any): Any {
+    override fun get(key: String): Any {
         val matchingLines = mutableListOf<Any>()
         path.toFile().useLines {
             lines ->
@@ -44,27 +46,36 @@ class FileStore(private val path: Path) : DbStore {
         return matchingLines.last()
     }
 
-    override fun put(key: Any, value: Any) {
+    override fun put(key: String, value: Any) {
         path.appendText("$key,$value\n")
     }
 }
 
 class FileStoreWithHashMap(private val path: Path) : DbStore {
-    private val hashMap = mutableMapOf<Any, Long>()
+    private val hashMap = mutableMapOf<String, Long>()
     private val file = RandomAccessFile(path.toFile(), "rw")
+    private val snapshotFile = Path("$path.snapshot")
 
     init {
         initHashmap()
     }
 
     private fun initHashmap() {
+
+        if (snapshotFile.exists()) {
+            val snapshotMap = Json.decodeFromString<Map<String, Long>>(snapshotFile.readText())
+            hashMap.clear()
+            hashMap.putAll(from = snapshotMap)
+            return
+        }
+
         file.seek(0)
-        var line: String? = ""
+        var line: String?
         while (true) {
             val pos = file.filePointer
             line = file.readLine()
             if (line == null) {
-                return
+                break
             }
 
             val splitLineList = line.split(',', limit = 2)
@@ -74,9 +85,16 @@ class FileStoreWithHashMap(private val path: Path) : DbStore {
 
             hashMap[splitLineList[0]] = pos
         }
+
+        saveHashMapSnapshot()
     }
 
-    override fun get(key: Any): Any? {
+    private fun saveHashMapSnapshot() {
+        if (!snapshotFile.exists()) { snapshotFile.createFile() }
+        snapshotFile.writeText(Json.encodeToString(hashMap))
+    }
+
+    override fun get(key: String): Any? {
         val pos = hashMap[key] ?: return null
         file.seek(pos)
         val row = file.readLine()
@@ -84,11 +102,12 @@ class FileStoreWithHashMap(private val path: Path) : DbStore {
         return row.removePrefix("$key,")
     }
 
-    override fun put(key: Any, value: Any) {
+    override fun put(key: String, value: Any) {
         file.seek(file.length())
         val row = "$key,$value\n"
         hashMap[key] = file.filePointer
         file.writeBytes(row)
+        saveHashMapSnapshot()
     }
 }
 
