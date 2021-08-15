@@ -73,8 +73,20 @@ internal class DbKtTest {
 
     @OptIn(ExperimentalTime::class)
     @Test
-    fun testSearchThroughBigFile() {
+    fun testCreateSnapshotFromBigFile() {
         val filestore_path = kotlin.io.path.Path("src/test/resources/filestore.db")
+
+        val fileStoreWithHashMapResult = measureTimedValue { FileStoreWithHashMap(filestore_path, kotlin.io.path.createTempFile("filestore.db")) }
+        val fileStoreWithHashMapDb = Db(fileStoreWithHashMapResult.value)
+        println("FileStoreWithHashmap load duration: ${fileStoreWithHashMapResult.duration}")
+
+        assertEquals("c83fcf4b-13d5-4abe-b946-6d7c9bfc51a0", fileStoreWithHashMapDb.get("x"))
+    }
+
+    @OptIn(ExperimentalTime::class)
+    @Test
+    fun testSearchThroughBigFile() {
+        val filestore_path = kotlin.io.path.Path("src/test/resources/filestoreWithSnapshot.db")
 
         val fileStore = FileStore(filestore_path)
         val filestoreDb = Db(fileStore)

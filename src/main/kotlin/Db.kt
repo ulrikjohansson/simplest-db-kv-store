@@ -2,6 +2,8 @@ package io.ulrik.db
 
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import java.io.BufferedReader
+import java.io.FileReader
 import java.io.RandomAccessFile
 import java.lang.IllegalStateException
 import java.nio.file.Path
@@ -51,10 +53,11 @@ class FileStore(private val path: Path) : DbStore {
     }
 }
 
-class FileStoreWithHashMap(private val path: Path) : DbStore {
+class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : DbStore {
     private val hashMap = mutableMapOf<String, Long>()
     private val file = RandomAccessFile(path.toFile(), "rw")
-    private val snapshotFile = Path("$path.snapshot")
+    private val reader = BufferedReader(FileReader(path.toFile()))
+    private val snapshotFile = Path("$snapshotPath.snapshot")
 
     init {
         initHashmap()
@@ -69,11 +72,10 @@ class FileStoreWithHashMap(private val path: Path) : DbStore {
             return
         }
 
-        file.seek(0)
         var line: String?
+        var pos: Long = 0
         while (true) {
-            val pos = file.filePointer
-            line = file.readLine()
+            line = reader.readLine()
             if (line == null) {
                 break
             }
@@ -84,6 +86,7 @@ class FileStoreWithHashMap(private val path: Path) : DbStore {
             }
 
             hashMap[splitLineList[0]] = pos
+            pos += line.length + 1
         }
 
         saveHashMapSnapshot()
