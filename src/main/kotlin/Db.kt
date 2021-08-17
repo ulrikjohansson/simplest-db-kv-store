@@ -10,10 +10,6 @@ import java.nio.file.Path
 import kotlin.io.path.*
 import kotlin.streams.toList
 
-/*fun main() {
-    throw NotImplementedError()
-}*/
-
 interface DbStore {
     fun get(key: String): Any?
     fun put(key: String, value: Any)
@@ -55,7 +51,7 @@ class FileStore(private val path: Path) : DbStore {
 
 class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : DbStore {
     private val hashMap = mutableMapOf<String, Long>()
-    private val file = RandomAccessFile(path.toFile(), "rw")
+    private val file = RandomAccessFile(path.toFile(), "rwd")
     private val reader = BufferedReader(FileReader(path.toFile()))
     private val snapshotFile = Path("$snapshotPath.snapshot")
 
