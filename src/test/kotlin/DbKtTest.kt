@@ -3,7 +3,9 @@ import io.ulrik.db.FileStore
 import io.ulrik.db.FileStoreWithHashMap
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
@@ -18,6 +20,7 @@ internal class DbKtTest {
         db.put("y", "2")
         db.put("z", z)
         db.put("x", "3")
+        db.put("a", "🇸🇪")
     }
 
     @Test
@@ -29,6 +32,7 @@ internal class DbKtTest {
         assertEquals("2", db.get("y"))
         assertEquals(z, db.get("z"))
         assertEquals("3", db.get("x"))
+        assertEquals("🇸🇪", db.get("a"))
     }
 
     @Test
@@ -41,6 +45,7 @@ internal class DbKtTest {
         assertEquals("2", db.get("y"))
         assertEquals(z, db.get("z"))
         assertEquals("3", db.get("x"))
+        assertEquals("🇸🇪", db.get("a"))
     }
 
     @Test
@@ -53,6 +58,7 @@ internal class DbKtTest {
         assertEquals("2", db.get("y"))
         assertEquals(z, db.get("z"))
         assertEquals("3", db.get("x"))
+        assertEquals("🇸🇪", db.get("a"))
     }
 
     @Test
@@ -69,6 +75,7 @@ internal class DbKtTest {
         assertEquals("2", db2.get("y"))
         assertEquals(z, db2.get("z"))
         assertEquals("3", db2.get("x"))
+        assertEquals("🇸🇪", db.get("a"))
     }
 
     @OptIn(ExperimentalTime::class)
@@ -76,17 +83,17 @@ internal class DbKtTest {
     fun testCreateSnapshotFromBigFile() {
         val filestore_path = kotlin.io.path.Path("src/test/resources/filestore.db")
 
-        val fileStoreWithHashMapResult = measureTimedValue { FileStoreWithHashMap(filestore_path, kotlin.io.path.createTempFile("filestore.db")) }
+        val fileStoreWithHashMapResult = measureTimedValue { FileStoreWithHashMap(filestore_path, kotlin.io.path.createTempFile("filestore_temp.db")) }
         val fileStoreWithHashMapDb = Db(fileStoreWithHashMapResult.value)
         println("FileStoreWithHashmap load duration: ${fileStoreWithHashMapResult.duration}")
 
-        assertEquals("c83fcf4b-13d5-4abe-b946-6d7c9bfc51a0", fileStoreWithHashMapDb.get("x"))
+        assertEquals("3a029bac-af2e-4f26-a8d6-8ca9ef912c52", fileStoreWithHashMapDb.get("x"))
     }
 
     @OptIn(ExperimentalTime::class)
     @Test
     fun testSearchThroughBigFile() {
-        val filestore_path = kotlin.io.path.Path("src/test/resources/filestoreWithSnapshot.db")
+        val filestore_path = kotlin.io.path.Path("src/test/resources/filestore.db")
 
         val fileStore = FileStore(filestore_path)
         val filestoreDb = Db(fileStore)
@@ -97,5 +104,21 @@ internal class DbKtTest {
         val fileStoreWithHashMapResult = measureTimedValue { fileStoreWithHashMapDb.get("x") }
         println("FileStore Get duration: ${filestoreResult.duration}")
         println("FileStoreWithHashmap Get duration: ${fileStoreWithHashMapResult.duration}")
+    }
+
+    /**
+     * Run this to recreate the test filestore if needed (if serialization changes for example)
+     */
+    @Disabled
+    @Test
+    fun createBigFileAndSnapshot() {
+        val filestore_path = kotlin.io.path.Path("src/test/resources/filestore.db")
+
+        val store = FileStoreWithHashMap(filestore_path)
+        val db = Db(store)
+
+        (0..10000).forEach {
+            db.put("x", UUID.randomUUID().toString())
+        }
     }
 }

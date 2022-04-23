@@ -7,6 +7,7 @@ import java.io.FileReader
 import java.io.RandomAccessFile
 import java.lang.IllegalStateException
 import java.nio.file.Path
+import java.util.Base64
 import kotlin.io.path.*
 import kotlin.streams.toList
 
@@ -31,12 +32,12 @@ class FileStore(private val path: Path) : DbStore {
 
     override fun get(key: String): Any {
         val matchingLines = mutableListOf<Any>()
-        path.toFile().useLines {
-            lines ->
+        path.toFile().useLines { lines ->
             lines.forEach {
-                if (it.startsWith("$key,")) {
+                val decodedLine = Base64.getDecoder().decode(it).decodeToString()
+                if (decodedLine.startsWith("$key,")) {
                     matchingLines.add(
-                        it.removePrefix("$key,")
+                        decodedLine.removePrefix("$key,")
                     )
                 }
             }
@@ -45,7 +46,8 @@ class FileStore(private val path: Path) : DbStore {
     }
 
     override fun put(key: String, value: Any) {
-        path.appendText("$key,$value\n")
+        val encodedRow = Base64.getEncoder().encodeToString("$key,$value".toByteArray())
+        path.appendText("$encodedRow\n")
     }
 }
 
@@ -75,8 +77,9 @@ class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : 
             if (line == null) {
                 break
             }
+            val decodedLine = Base64.getDecoder().decode(line).decodeToString()
 
-            val splitLineList = line.split(',', limit = 2)
+            val splitLineList = decodedLine.split(',', limit = 2)
             if (splitLineList.size != 2) {
                 throw IllegalStateException()
             }
@@ -89,7 +92,9 @@ class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : 
     }
 
     private fun saveHashMapSnapshot() {
-        if (!snapshotFile.exists()) { snapshotFile.createFile() }
+        if (!snapshotFile.exists()) {
+            snapshotFile.createFile()
+        }
         snapshotFile.writeText(Json.encodeToString(hashMap))
     }
 
@@ -97,15 +102,17 @@ class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : 
         val pos = hashMap[key] ?: return null
         file.seek(pos)
         val row = file.readLine()
+        val decodedRow = Base64.getDecoder().decode(row).decodeToString()
 
-        return row.removePrefix("$key,")
+        return decodedRow.removePrefix("$key,")
     }
 
     override fun put(key: String, value: Any) {
         file.seek(file.length())
-        val row = "$key,$value\n"
+        val row = "$key,$value"
+        val encodedRow = Base64.getEncoder().encodeToString(row.toByteArray())
         hashMap[key] = file.filePointer
-        file.writeBytes(row)
+        file.writeBytes("$encodedRow\n")
         saveHashMapSnapshot()
     }
 }
