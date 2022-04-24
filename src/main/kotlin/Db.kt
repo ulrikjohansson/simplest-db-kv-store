@@ -22,6 +22,9 @@ interface DbStore {
     fun put(key: String, value: Any)
 }
 
+/**
+ * In-memory store using a mutable list
+ */
 class ListStore : DbStore {
     private val store: MutableList<Pair<Any, Any>> = mutableListOf()
     override fun get(key: String): Any {
@@ -34,6 +37,14 @@ class ListStore : DbStore {
     }
 }
 
+/**
+ * A naive append-only file backend with no index.
+ *
+ * Filestore.get searches through the whole file from the beginning for all occurences of key,
+ * and returns the last occurence.
+ * Fixme: Just search backwards instead?
+ * Fixme: Do we read the whole file into memory when searching? Can we not do that?
+ */
 class FileStore(private val path: Path) : DbStore {
 
     override fun get(key: String): Any {
@@ -57,6 +68,18 @@ class FileStore(private val path: Path) : DbStore {
     }
 }
 
+/**
+ * A slightly less naive file backend using an index to keep track of the position (line) of the current
+ * value for each key
+ *
+ * Stores each key/value entry as a base64 string to get around multi-byte character problems.
+ * The index is a mutable hashmap in memory, and is serialized to a JSON file on disk.
+ * This backend does not try to read the whole file into memory at any point,
+ * so can be used with databases that do not fit into memory.
+ * The index however, needs to fit in memory.
+ *
+ * This backend is MUCH faster (O(1)?) for gets on large db files, and still O(1) on writes
+ */
 class FileStoreWithHashMapIndex(private val path: Path, snapshotPath: Path = path) : DbStore {
     private val hashMapIndex = mutableMapOf<String, Long>()
     private val file = RandomAccessFile(path.toFile(), "rwd")
@@ -123,6 +146,9 @@ class FileStoreWithHashMapIndex(private val path: Path, snapshotPath: Path = pat
     }
 }
 
+/**
+ * DB frontend with a pluggable backend
+ */
 class Db(private val store: DbStore = ListStore()) {
 
     fun put(key: String, value: String) {
