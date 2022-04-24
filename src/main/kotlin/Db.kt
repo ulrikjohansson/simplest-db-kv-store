@@ -87,7 +87,7 @@ class FileStoreWithHashMapIndex(private val path: Path, snapshotPath: Path = pat
 
             val splitLineList = decodedLine.split(',', limit = 2)
             if (splitLineList.size != 2) {
-                throw IllegalStateException()
+                throw IllegalStateException("The decoded line does not look like expected")
             }
 
             hashMapIndex[splitLineList[0]] = pos
