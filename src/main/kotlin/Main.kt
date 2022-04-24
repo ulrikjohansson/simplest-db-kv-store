@@ -11,7 +11,7 @@ fun main(args: Array<String>) {
     val dbKey by parser.argument(ArgType.String)
 
     class Get : Subcommand("get", "Get value for key") {
-        val db = Db(FileStoreWithHashMap(Path(storePath ?: "simple.db")))
+        val db = Db(FileStoreWithHashMapIndex(Path(storePath ?: "simple.db")))
         var result: String = ""
 
         override fun execute() {
@@ -22,7 +22,7 @@ fun main(args: Array<String>) {
     }
 
     class Put : Subcommand("put", "Set value for key") {
-        val db = Db(FileStoreWithHashMap(Path(storePath ?: "simple.db")))
+        val db = Db(FileStoreWithHashMapIndex(Path(storePath ?: "simple.db")))
         val dbValue by argument(ArgType.String)
         var result: String = ""
 

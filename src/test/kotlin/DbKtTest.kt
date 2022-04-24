@@ -1,6 +1,6 @@
 import io.ulrik.db.Db
 import io.ulrik.db.FileStore
-import io.ulrik.db.FileStoreWithHashMap
+import io.ulrik.db.FileStoreWithHashMapIndex
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Disabled
@@ -50,7 +50,7 @@ internal class DbKtTest {
 
     @Test
     fun testFileStoreWithHashmap() {
-        val store = FileStoreWithHashMap(kotlin.io.path.createTempFile("db_"))
+        val store = FileStoreWithHashMapIndex(kotlin.io.path.createTempFile("db_"))
         val db = Db(store)
 
         addDataToDb(db)
@@ -64,12 +64,12 @@ internal class DbKtTest {
     @Test
     fun testFileStoreWithHashmapInit() {
         val file = kotlin.io.path.createTempFile("db_")
-        val store = FileStoreWithHashMap(file)
+        val store = FileStoreWithHashMapIndex(file)
         val db = Db(store)
 
         addDataToDb(db)
 
-        val store2 = FileStoreWithHashMap(file)
+        val store2 = FileStoreWithHashMapIndex(file)
         val db2 = Db(store2)
 
         assertEquals("2", db2.get("y"))
@@ -83,9 +83,9 @@ internal class DbKtTest {
     fun testCreateSnapshotFromBigFile() {
         val filestore_path = kotlin.io.path.Path("src/test/resources/filestore.db")
 
-        val fileStoreWithHashMapResult = measureTimedValue { FileStoreWithHashMap(filestore_path, kotlin.io.path.createTempFile("filestore_temp.db")) }
-        val fileStoreWithHashMapDb = Db(fileStoreWithHashMapResult.value)
-        println("FileStoreWithHashmap load duration: ${fileStoreWithHashMapResult.duration}")
+        val fileStoreWithHashMapIndexResult = measureTimedValue { FileStoreWithHashMapIndex(filestore_path, kotlin.io.path.createTempFile("filestore.db")) }
+        val fileStoreWithHashMapDb = Db(fileStoreWithHashMapIndexResult.value)
+        println("FileStoreWithHashmap load duration: ${fileStoreWithHashMapIndexResult.duration}")
 
         assertEquals("3a029bac-af2e-4f26-a8d6-8ca9ef912c52", fileStoreWithHashMapDb.get("x"))
     }
@@ -97,8 +97,8 @@ internal class DbKtTest {
 
         val fileStore = FileStore(filestore_path)
         val filestoreDb = Db(fileStore)
-        val fileStoreWithHashMap = FileStoreWithHashMap(filestore_path)
-        val fileStoreWithHashMapDb = Db(fileStoreWithHashMap)
+        val fileStoreWithHashMapIndex = FileStoreWithHashMapIndex(filestore_path)
+        val fileStoreWithHashMapDb = Db(fileStoreWithHashMapIndex)
 
         val filestoreResult = measureTimedValue { filestoreDb.get("x") }
         val fileStoreWithHashMapResult = measureTimedValue { fileStoreWithHashMapDb.get("x") }
@@ -114,7 +114,7 @@ internal class DbKtTest {
     fun createBigFileAndSnapshot() {
         val filestore_path = kotlin.io.path.Path("src/test/resources/filestore.db")
 
-        val store = FileStoreWithHashMap(filestore_path)
+        val store = FileStoreWithHashMapIndex(filestore_path)
         val db = Db(store)
 
         (0..10000).forEach {

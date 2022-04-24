@@ -51,11 +51,11 @@ class FileStore(private val path: Path) : DbStore {
     }
 }
 
-class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : DbStore {
-    private val hashMap = mutableMapOf<String, Long>()
+class FileStoreWithHashMapIndex(private val path: Path, snapshotPath: Path = path) : DbStore {
+    private val hashMapIndex = mutableMapOf<String, Long>()
     private val file = RandomAccessFile(path.toFile(), "rwd")
     private val reader = BufferedReader(FileReader(path.toFile()))
-    private val snapshotFile = Path("$snapshotPath.snapshot")
+    private val indexFile = Path("$snapshotPath.idx")
 
     init {
         initHashmap()
@@ -63,10 +63,10 @@ class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : 
 
     private fun initHashmap() {
 
-        if (snapshotFile.exists()) {
-            val snapshotMap = Json.decodeFromString<Map<String, Long>>(snapshotFile.readText())
-            hashMap.clear()
-            hashMap.putAll(from = snapshotMap)
+        if (indexFile.exists()) {
+            val snapshotMap = Json.decodeFromString<Map<String, Long>>(indexFile.readText())
+            hashMapIndex.clear()
+            hashMapIndex.putAll(from = snapshotMap)
             return
         }
 
@@ -84,22 +84,22 @@ class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : 
                 throw IllegalStateException()
             }
 
-            hashMap[splitLineList[0]] = pos
+            hashMapIndex[splitLineList[0]] = pos
             pos += line.length + 1
         }
 
-        saveHashMapSnapshot()
+        saveHashMapIndexToFile()
     }
 
-    private fun saveHashMapSnapshot() {
-        if (!snapshotFile.exists()) {
-            snapshotFile.createFile()
+    private fun saveHashMapIndexToFile() {
+        if (!indexFile.exists()) {
+            indexFile.createFile()
         }
-        snapshotFile.writeText(Json.encodeToString(hashMap))
+        indexFile.writeText(Json.encodeToString(hashMapIndex))
     }
 
     override fun get(key: String): Any? {
-        val pos = hashMap[key] ?: return null
+        val pos = hashMapIndex[key] ?: return null
         file.seek(pos)
         val row = file.readLine()
         val decodedRow = Base64.getDecoder().decode(row).decodeToString()
@@ -111,9 +111,9 @@ class FileStoreWithHashMap(private val path: Path, snapshotPath: Path = path) : 
         file.seek(file.length())
         val row = "$key,$value"
         val encodedRow = Base64.getEncoder().encodeToString(row.toByteArray())
-        hashMap[key] = file.filePointer
+        hashMapIndex[key] = file.filePointer
         file.writeBytes("$encodedRow\n")
-        saveHashMapSnapshot()
+        saveHashMapIndexToFile()
     }
 }
 
