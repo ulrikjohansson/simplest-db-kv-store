@@ -26,6 +26,10 @@ tasks.withType<KotlinCompile>() {
     kotlinOptions.jvmTarget = "11"
 }
 
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+}
+
 tasks.register<Jar>("uberJar") {
     manifest {
         attributes["Main-Class"] = "io.ulrik.db.MainKt"
