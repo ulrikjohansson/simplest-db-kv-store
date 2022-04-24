@@ -1,15 +1,21 @@
 package io.ulrik.db
 
-import kotlinx.serialization.*
-import kotlinx.serialization.json.*
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.BufferedReader
 import java.io.FileReader
 import java.io.RandomAccessFile
 import java.lang.IllegalStateException
 import java.nio.file.Path
 import java.util.Base64
-import kotlin.io.path.*
+import kotlin.io.path.appendText
+import kotlin.io.path.createFile
+import kotlin.io.path.exists
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.streams.toList
+import kotlin.io.path.Path as KotlinPath
 
 interface DbStore {
     fun get(key: String): Any?
@@ -55,7 +61,7 @@ class FileStoreWithHashMapIndex(private val path: Path, snapshotPath: Path = pat
     private val hashMapIndex = mutableMapOf<String, Long>()
     private val file = RandomAccessFile(path.toFile(), "rwd")
     private val reader = BufferedReader(FileReader(path.toFile()))
-    private val indexFile = Path("$snapshotPath.idx")
+    private val indexFile = KotlinPath("$snapshotPath.idx")
 
     init {
         initHashmap()
